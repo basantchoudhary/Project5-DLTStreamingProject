@@ -12,6 +12,8 @@ from framework.writer import write_scd_targets
 from framework.logger import log_event
 from framework.dlt_single_table_controller import build_single_table
 from framework.dlt_main_controller import run
+from framework.recon import run_recon
+from framework.latency_report import run_latency_report
 
 __all__ = [
     "load_dataset_metadata",
@@ -24,4 +26,6 @@ __all__ = [
     "log_event",
     "build_single_table",
     "run",
+    "run_recon",
+    "run_latency_report",
 ]

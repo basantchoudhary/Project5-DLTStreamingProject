@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Low-Level Design · DLT Streaming</title>
+<style>
+  :root{--bg:#0b1020;--panel:#121a30;--ink:#e8edf7;--muted:#9fb0cc;--line:#243154;
+        --accent:#4ea1ff;--accent2:#38d39f;--accent3:#f2b04a;--red:#f2668b;}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#f4f7fc;--panel:#fff;--ink:#132038;--muted:#5a6a86;--line:#dbe4f3;
+          --accent:#1b6fe0;--accent2:#0f9d76;--accent3:#c2410c;--red:#d6336c;}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1000px;margin:0 auto;padding:40px 22px 80px}
+  a.back{color:var(--accent);text-decoration:none;font-size:.9rem}
+  h1{font-size:1.9rem;margin:14px 0 6px}
+  .sub{color:var(--muted);margin:0 0 26px}
+  h2{font-size:1.25rem;margin:34px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  p{margin:10px 0}
+  .diagram{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;overflow-x:auto}
+  svg{display:block;min-width:760px;margin:0 auto}
+  .n{font:600 13px ui-sans-serif,system-ui;fill:var(--ink)}
+  .s{font:11px ui-sans-serif,system-ui;fill:var(--muted)}
+  .m{font:600 11px ui-monospace,monospace;fill:var(--accent)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:.92rem}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--panel);color:var(--accent)}
+  code{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:.85em}
+  pre{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto;font-size:.82rem;line-height:1.5}
+  ul{margin:10px 0;padding-left:22px} li{margin:5px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">← Design index</a>
+  <h1>Low-Level Design</h1>
+  <p class="sub">The controller stack and the per-table DLT graph — reader → append_flow → processor → writer.</p>
+
+  <h2>Controller stack</h2>
+  <div class="diagram">
+    <svg viewBox="0 0 760 250" role="img" aria-label="Controller stack">
+      <defs><marker id="a2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#4ea1ff"/></marker></defs>
+      <rect x="20" y="30" width="150" height="66" rx="9" fill="var(--panel)" stroke="var(--line)"/>
+      <text x="95" y="55" text-anchor="middle" class="n">DLT Pipeline (g=N)</text>
+      <text x="95" y="74" text-anchor="middle" class="s">dlt_entry.py</text>
+      <text x="95" y="88" text-anchor="middle" class="m">source, group, list</text>
+
+      <rect x="230" y="30" width="160" height="66" rx="9" fill="var(--panel)" stroke="var(--accent)"/>
+      <text x="310" y="52" text-anchor="middle" class="n">DLTMainController</text>
+      <text x="310" y="70" text-anchor="middle" class="s">meta_loader → loop</text>
+      <text x="310" y="84" text-anchor="middle" class="s">log · delegate</text>
+
+      <rect x="450" y="30" width="170" height="66" rx="9" fill="var(--panel)" stroke="var(--accent)"/>
+      <text x="535" y="52" text-anchor="middle" class="n">DLTSingleTable</text>
+      <text x="535" y="66" text-anchor="middle" class="n">Controller</text>
+      <text x="535" y="84" text-anchor="middle" class="s">builds one table's graph</text>
+
+      <rect x="230" y="150" width="390" height="64" rx="9" fill="var(--panel)" stroke="var(--accent2)"/>
+      <text x="425" y="172" text-anchor="middle" class="n">buildDerivedConfigForThisTable</text>
+      <text x="425" y="190" text-anchor="middle" class="s">__full/__ct paths · cdc cols · scd targets · clustering</text>
+      <text x="425" y="204" text-anchor="middle" class="s">reader · processor · writer</text>
+
+      <line x1="170" y1="63" x2="228" y2="63" stroke="#4ea1ff" marker-end="url(#a2)"/>
+      <line x1="390" y1="63" x2="448" y2="63" stroke="#4ea1ff" marker-end="url(#a2)"/>
+      <line x1="535" y1="96" x2="535" y2="148" stroke="#4ea1ff" marker-end="url(#a2)"/>
+    </svg>
+  </div>
+
+  <h2>Per-table DLT graph</h2>
+  <p>For each table the single-table controller defines these nodes. <b>full</b> and <b>ct</b> both <code>append_flow</code> into one <code>_raw</code> streaming table; a processor view standardizes the CDC shape; the writer runs <code>apply_changes</code> into SCD1/SCD2.</p>
+  <div class="diagram">
+    <svg viewBox="0 0 760 330" role="img" aria-label="Per table DLT graph">
+      <defs><marker id="a3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#38d39f"/></marker></defs>
+      <!-- sources -->
+      <rect x="20" y="30" width="160" height="60" rx="9" fill="var(--panel)" stroke="var(--accent3)"/>
+      <text x="100" y="54" text-anchor="middle" class="n">__full (Auto Loader)</text>
+      <text x="100" y="72" text-anchor="middle" class="s">seed flow · optional</text>
+
+      <rect x="20" y="130" width="160" height="60" rx="9" fill="var(--panel)" stroke="var(--accent3)"/>
+      <text x="100" y="154" text-anchor="middle" class="n">__ct (Auto Loader)</text>
+      <text x="100" y="172" text-anchor="middle" class="s">ongoing CDC flow</text>
+
+      <!-- raw -->
+      <rect x="250" y="80" width="160" height="66" rx="9" fill="var(--panel)" stroke="var(--accent)"/>
+      <text x="330" y="104" text-anchor="middle" class="n">&lt;table&gt;_raw</text>
+      <text x="330" y="122" text-anchor="middle" class="s">streaming table</text>
+      <text x="330" y="136" text-anchor="middle" class="m">append_flow ×2</text>
+
+      <!-- processor -->
+      <rect x="250" y="200" width="160" height="66" rx="9" fill="var(--panel)" stroke="var(--accent2)"/>
+      <text x="330" y="224" text-anchor="middle" class="n">&lt;table&gt;_processed</text>
+      <text x="330" y="242" text-anchor="middle" class="s">view · standardize</text>
+      <text x="330" y="256" text-anchor="middle" class="m">_op (I/U/D) · _seq</text>
+
+      <!-- targets -->
+      <rect x="500" y="120" width="240" height="46" rx="9" fill="var(--panel)" stroke="var(--accent2)"/>
+      <text x="620" y="140" text-anchor="middle" class="n">bronze_scd1.&lt;table&gt;</text>
+      <text x="620" y="156" text-anchor="middle" class="s">apply_changes · SCD type 1</text>
+
+      <rect x="500" y="200" width="240" height="46" rx="9" fill="var(--panel)" stroke="var(--accent2)"/>
+      <text x="620" y="220" text-anchor="middle" class="n">bronze_scd2.&lt;table&gt;</text>
+      <text x="620" y="236" text-anchor="middle" class="s">apply_changes · SCD type 2</text>
+
+      <line x1="180" y1="60" x2="248" y2="100" stroke="#38d39f" marker-end="url(#a3)"/>
+      <line x1="180" y1="160" x2="248" y2="122" stroke="#38d39f" marker-end="url(#a3)"/>
+      <line x1="330" y1="146" x2="330" y2="198" stroke="#38d39f" marker-end="url(#a3)"/>
+      <line x1="410" y1="228" x2="498" y2="150" stroke="#38d39f" marker-end="url(#a3)"/>
+      <line x1="410" y1="233" x2="498" y2="223" stroke="#38d39f" marker-end="url(#a3)"/>
+    </svg>
+  </div>
+
+  <h2>Node responsibilities</h2>
+  <table>
+    <tr><th>Node</th><th>Module</th><th>Does</th></tr>
+    <tr><td><code>&lt;table&gt;_raw</code></td><td><code>dlt_single_table_controller.py</code></td><td><code>create_streaming_table</code>; both flows append here.</td></tr>
+    <tr><td>full / ct flows</td><td><code>reader.py</code></td><td>Auto Loader (<code>cloudFiles</code>) read streams + lineage cols; wrapped in <code>@dlt.append_flow</code>.</td></tr>
+    <tr><td><code>&lt;table&gt;_processed</code></td><td><code>processor.py</code></td><td><code>@dlt.view</code> over <code>_raw</code>: maps Qlik op → <code>_op</code> (I/U/D), derives <code>_seq</code>.</td></tr>
+    <tr><td>SCD1 / SCD2</td><td><code>writer.py</code></td><td><code>apply_changes</code>; deletes via <code>_op='D'</code>; framework/header cols excluded.</td></tr>
+  </table>
+
+  <h2>Why a <code>_raw</code> + append_flow, not read both directly?</h2>
+  <ul>
+    <li>One <code>apply_changes</code> target needs one logical source. <code>append_flow</code> lets <b>full</b> and <b>ct</b> feed the same <code>_raw</code> without a union that would break streaming.</li>
+    <li><b>full</b> can be switched off after seeding (<code>load_type=incr</code>) — drop the flow, keep the table and its state.</li>
+    <li><code>apply_changes</code> de-dups by <code>keys + _seq</code>, so a full/ct overlap during seeding is harmless.</li>
+  </ul>
+
+  <pre>build_single_table(dataset):
+    derived = build_derived_config(dataset, source, platform)
+    dlt.create_streaming_table(derived.raw_table)
+    if derived.include_full_flow:
+        @dlt.append_flow(target=raw)  def full(): reader(full_path)
+    @dlt.append_flow(target=raw)      def ct():   reader(ct_path)
+    @dlt.view(processed)              def _():    standardize_cdc(read_stream(raw))
+    write_scd_targets(derived, processed)   # apply_changes → scd1 / scd2</pre>
+
+  <p>Next: <a href="metadata-tables-design.html">Metadata Tables Design →</a></p>
+</div>
+</body>
+</html>

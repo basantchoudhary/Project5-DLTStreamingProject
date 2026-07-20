@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project 5 · DLT Streaming — Design</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#121a30; --ink:#e8edf7; --muted:#9fb0cc; --line:#243154;
+    --accent:#4ea1ff; --accent2:#38d39f; --accent3:#f2b04a;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f4f7fc; --panel:#ffffff; --ink:#132038; --muted:#5a6a86; --line:#dbe4f3;
+           --accent:#1b6fe0; --accent2:#0f9d76; --accent3:#c2410c; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1000px;margin:0 auto;padding:48px 22px 80px}
+  h1{font-size:2rem;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{color:var(--muted);margin:0 0 34px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+  a.card{display:block;text-decoration:none;color:inherit;background:var(--panel);
+         border:1px solid var(--line);border-radius:14px;padding:22px 22px 20px;
+         transition:transform .12s ease,border-color .12s ease}
+  a.card:hover{transform:translateY(-3px);border-color:var(--accent)}
+  .tag{display:inline-block;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;
+       color:var(--accent);border:1px solid var(--line);border-radius:20px;padding:3px 10px;margin-bottom:12px}
+  .card h2{font-size:1.15rem;margin:0 0 8px}
+  .card p{margin:0;color:var(--muted);font-size:.92rem}
+  .foot{margin-top:40px;color:var(--muted);font-size:.85rem}
+  code{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:.85em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Project 5 — Metadata-Driven DLT Streaming</h1>
+  <p class="sub">Oracle&nbsp;→&nbsp;Qlik&nbsp;Replicate&nbsp;→&nbsp;ADLS&nbsp;→&nbsp;Delta Live Tables. Design docs, diagram-first.</p>
+
+  <div class="grid">
+    <a class="card" href="high-level-flow.html">
+      <span class="tag">01 · High level</span>
+      <h2>High-Level Flow</h2>
+      <p>Source app to Oracle redo logs, Qlik Replicate to ADLS, 20 DLT pipelines to UC SCD1/SCD2 — the end-to-end picture.</p>
+    </a>
+    <a class="card" href="low-level-design.html">
+      <span class="tag">02 · Low level</span>
+      <h2>Low-Level Design</h2>
+      <p>Per-table DLT graph: <code>_raw</code> streaming table, full + ct <code>append_flow</code>, processor view, <code>apply_changes</code>, and the controller loop.</p>
+    </a>
+    <a class="card" href="metadata-tables-design.html">
+      <span class="tag">03 · Metadata</span>
+      <h2>Metadata Tables Design</h2>
+      <p>The 5 control tables + run log that drive everything. Columns, key/value model, and how <code>meta_loader</code> reads them.</p>
+    </a>
+  </div>
+
+  <p class="foot">Companion reading: <code>../docs/</code> (markdown), <code>../ComponentWiseConceptToLearn/</code> (concepts), <code>../Project&nbsp;Challenges/</code> (war stories).</p>
+</div>
+</body>
+</html>

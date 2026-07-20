@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>High-Level Flow · DLT Streaming</title>
+<style>
+  :root{--bg:#0b1020;--panel:#121a30;--ink:#e8edf7;--muted:#9fb0cc;--line:#243154;
+        --accent:#4ea1ff;--accent2:#38d39f;--accent3:#f2b04a;--red:#f2668b;}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#f4f7fc;--panel:#fff;--ink:#132038;--muted:#5a6a86;--line:#dbe4f3;
+          --accent:#1b6fe0;--accent2:#0f9d76;--accent3:#c2410c;--red:#d6336c;}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1000px;margin:0 auto;padding:40px 22px 80px}
+  a.back{color:var(--accent);text-decoration:none;font-size:.9rem}
+  h1{font-size:1.9rem;margin:14px 0 6px}
+  .sub{color:var(--muted);margin:0 0 26px}
+  h2{font-size:1.25rem;margin:34px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  p{margin:10px 0}
+  .diagram{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;overflow-x:auto}
+  svg{display:block;min-width:760px;margin:0 auto}
+  .n{font:600 13px ui-sans-serif,system-ui;fill:var(--ink)}
+  .s{font:11px ui-sans-serif,system-ui;fill:var(--muted)}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:.92rem}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--panel);color:var(--accent)}
+  code{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:.85em}
+  ul{margin:10px 0;padding-left:22px} li{margin:5px 0}
+  .pill{display:inline-block;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;
+        color:var(--accent2);border:1px solid var(--line);border-radius:20px;padding:2px 10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">← Design index</a>
+  <h1>High-Level Flow</h1>
+  <p class="sub">From an operational app all the way to query-ready SCD1 / SCD2 tables in Unity Catalog.</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 780 430" role="img" aria-label="End to end data flow">
+      <defs>
+        <marker id="ar" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6 Z" fill="#4ea1ff"/>
+        </marker>
+      </defs>
+      <!-- boxes -->
+      <g>
+        <rect x="20" y="30" width="120" height="60" rx="9" fill="var(--panel)" stroke="var(--line)"/>
+        <text x="80" y="55" text-anchor="middle" class="n">SomeApp</text>
+        <text x="80" y="74" text-anchor="middle" class="s">OLTP writes</text>
+
+        <rect x="20" y="130" width="120" height="70" rx="9" fill="var(--panel)" stroke="var(--accent3)"/>
+        <text x="80" y="158" text-anchor="middle" class="n">Oracle DB</text>
+        <text x="80" y="176" text-anchor="middle" class="s">redo logs</text>
+        <text x="80" y="190" text-anchor="middle" class="s">(Oracle VM)</text>
+
+        <rect x="300" y="120" width="170" height="90" rx="9" fill="var(--panel)" stroke="var(--accent)"/>
+        <text x="385" y="146" text-anchor="middle" class="n">Qlik Replicate</text>
+        <text x="385" y="164" text-anchor="middle" class="s">Azure VM · copy redolog</text>
+        <text x="385" y="180" text-anchor="middle" class="s">extract → parquet</text>
+        <text x="385" y="196" text-anchor="middle" class="s">snappy zip</text>
+
+        <rect x="300" y="270" width="170" height="120" rx="9" fill="var(--panel)" stroke="var(--accent2)"/>
+        <text x="385" y="296" text-anchor="middle" class="n">ADLS Gen2 (landing)</text>
+        <text x="385" y="320" text-anchor="middle" class="s">source/table1__full</text>
+        <text x="385" y="337" text-anchor="middle" class="s">source/table1__ct</text>
+        <text x="385" y="354" text-anchor="middle" class="s">source/table2__full</text>
+        <text x="385" y="371" text-anchor="middle" class="s">source/table2__ct …</text>
+
+        <rect x="560" y="120" width="200" height="90" rx="9" fill="var(--panel)" stroke="var(--accent)"/>
+        <text x="660" y="146" text-anchor="middle" class="n">20 DLT Pipelines</text>
+        <text x="660" y="164" text-anchor="middle" class="s">~10 tables each (group)</text>
+        <text x="660" y="180" text-anchor="middle" class="s">Auto Loader → apply_changes</text>
+        <text x="660" y="196" text-anchor="middle" class="s">one entry notebook</text>
+
+        <rect x="560" y="270" width="200" height="90" rx="9" fill="var(--panel)" stroke="var(--accent2)"/>
+        <text x="660" y="296" text-anchor="middle" class="n">Unity Catalog (bronze)</text>
+        <text x="660" y="320" text-anchor="middle" class="s">bronze_scd1.&lt;table&gt;</text>
+        <text x="660" y="337" text-anchor="middle" class="s">bronze_scd2.&lt;table&gt;</text>
+        <text x="660" y="354" text-anchor="middle" class="s">liquid clustering AUTO</text>
+      </g>
+      <!-- arrows -->
+      <line x1="80" y1="90" x2="80" y2="128" stroke="#4ea1ff" marker-end="url(#ar)"/>
+      <line x1="140" y1="165" x2="298" y2="165" stroke="#4ea1ff" marker-end="url(#ar)"/>
+      <line x1="385" y1="210" x2="385" y2="268" stroke="#4ea1ff" marker-end="url(#ar)"/>
+      <line x1="470" y1="320" x2="560" y2="200" stroke="#4ea1ff" marker-end="url(#ar)"/>
+      <line x1="660" y1="210" x2="660" y2="268" stroke="#4ea1ff" marker-end="url(#ar)"/>
+    </svg>
+  </div>
+
+  <h2>Stage by stage</h2>
+  <table>
+    <tr><th>Stage</th><th>What happens</th><th>Why</th></tr>
+    <tr><td><b>SomeApp → Oracle</b></td><td>The application commits transactions; Oracle records every change in its <b>redo logs</b>.</td><td>The redo log is a complete, ordered record of change — the reliable CDC source.</td></tr>
+    <tr><td><b>Qlik Replicate</b> (Azure VM)</td><td>Reads/copies the redo log, extracts changes, and writes <b>snappy-compressed Parquet</b> to ADLS.</td><td>Turns database-internal change events into cheap, columnar files on cloud storage — no load on the source.</td></tr>
+    <tr><td><b>ADLS landing</b></td><td>Per table, two folders: <code>&lt;table&gt;__full</code> (snapshot / seed) and <code>&lt;table&gt;__ct</code> (ongoing change table).</td><td>Full seeds the target once; ct streams every insert/update/delete after.</td></tr>
+    <tr><td><b>20 DLT pipelines</b></td><td>Each owns one <code>table_group_no</code> (~10 tables). Auto Loader ingests the files; <code>apply_changes</code> merges CDC.</td><td>Fan-out = parallelism + blast-radius isolation (one group failing ≠ all 200 tables down).</td></tr>
+    <tr><td><b>Unity Catalog</b></td><td>Each table lands as a streaming SCD1 and/or SCD2 table with liquid clustering.</td><td>Query-ready bronze: latest state (SCD1) and full history (SCD2).</td></tr>
+  </table>
+
+  <h2>Key properties</h2>
+  <ul>
+    <li><span class="pill">Metadata-driven</span> — onboarding a table is a config row, not code (see <a href="metadata-tables-design.html">metadata design</a>).</li>
+    <li><span class="pill">Log-based CDC</span> — reading redo logs means near-zero impact on the operational database.</li>
+    <li><span class="pill">Exactly-once ingest</span> — Auto Loader checkpoints which files it has seen; re-runs don't double-count.</li>
+    <li><span class="pill">Full → incr lifecycle</span> — seed with <code>__full</code>, then run on <code>__ct</code> only; <code>apply_changes</code> makes the overlap safe.</li>
+  </ul>
+
+  <p>Next: <a href="low-level-design.html">Low-Level Design →</a></p>
+</div>
+</body>
+</html>

@@ -18,7 +18,9 @@ INSERT INTO ingest_meta.control.platform_config (config_key, config_value) VALUE
   ('qlik_op_col',         'header__change_oper'),
   ('qlik_seq_col',        'header__change_seq'),
   ('qlik_delete_code',    'D'),
-  ('liquid_cluster_auto', 'true');
+  ('liquid_cluster_auto', 'true'),
+  ('delete_mode',         'hard'),      -- default delete handling; 'soft' = is_deleted flag
+  ('is_deleted_col',      'is_deleted');
 
 -- ---- source_master + source_config -----------------------------------------
 DELETE FROM ingest_meta.control.source_master WHERE source_id = 'ORA_SALES';

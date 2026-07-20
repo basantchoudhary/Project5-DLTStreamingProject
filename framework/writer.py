@@ -23,8 +23,11 @@ def write_scd_targets(derived, source_view):
     keys = derived["primary_keys"]
     op_col = derived["op_col"]
     seq_col = derived["seq_col"]
+    soft_delete = derived.get("delete_mode") == "soft"
 
-    # columns to drop from the target = framework cols + raw Qlik cdc header cols
+    # columns to drop from the target = framework cols + raw Qlik cdc header cols.
+    # In soft-delete mode the is_deleted flag must be KEPT in the target, so it is
+    # not added to the exclude list (it is not a framework col anyway).
     except_cols = list(dict.fromkeys(_FRAMEWORK_COLS + [op_col, seq_col]))
 
     for scd_int, target_name in derived["scd_targets"]:
@@ -37,12 +40,18 @@ def write_scd_targets(derived, source_view):
         dlt.create_streaming_table(**create_kwargs)
 
         # --- apply the CDC merge ------------------------------------------------
-        dlt.apply_changes(
+        apply_kwargs = dict(
             target=target_name,
             source=source_view,
             keys=keys,
             sequence_by=F.col("_seq"),
-            apply_as_deletes=F.expr("_op = 'D'"),
             except_column_list=except_cols,
             stored_as_scd_type=scd_int,
         )
+        # hard delete: physically remove / close the row on _op='D'.
+        # soft delete: the processor already turned 'D' into 'U' + is_deleted=true,
+        # so there is nothing to apply_as_deletes — the flagged row is upserted.
+        if not soft_delete:
+            apply_kwargs["apply_as_deletes"] = F.expr("_op = 'D'")
+
+        dlt.apply_changes(**apply_kwargs)

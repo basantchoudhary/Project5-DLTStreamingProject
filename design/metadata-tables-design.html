@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Metadata Tables Design · DLT Streaming</title>
+<style>
+  :root{--bg:#0b1020;--panel:#121a30;--ink:#e8edf7;--muted:#9fb0cc;--line:#243154;
+        --accent:#4ea1ff;--accent2:#38d39f;--accent3:#f2b04a;--red:#f2668b;}
+  @media (prefers-color-scheme: light){
+    :root{--bg:#f4f7fc;--panel:#fff;--ink:#132038;--muted:#5a6a86;--line:#dbe4f3;
+          --accent:#1b6fe0;--accent2:#0f9d76;--accent3:#c2410c;--red:#d6336c;}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1000px;margin:0 auto;padding:40px 22px 80px}
+  a.back{color:var(--accent);text-decoration:none;font-size:.9rem}
+  h1{font-size:1.9rem;margin:14px 0 6px}
+  .sub{color:var(--muted);margin:0 0 26px}
+  h2{font-size:1.25rem;margin:34px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+  h3{font-size:1.02rem;margin:22px 0 6px;color:var(--accent)}
+  p{margin:10px 0}
+  .diagram{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;overflow-x:auto}
+  svg{display:block;min-width:720px;margin:0 auto}
+  .n{font:600 13px ui-sans-serif,system-ui;fill:var(--ink)}
+  .s{font:11px ui-sans-serif,system-ui;fill:var(--muted)}
+  table{border-collapse:collapse;width:100%;margin:10px 0;font-size:.9rem}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:var(--panel);color:var(--accent)}
+  code{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:.85em}
+  pre{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto;font-size:.82rem;line-height:1.5}
+  .kv{color:var(--accent2);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html">← Design index</a>
+  <h1>Metadata Tables Design</h1>
+  <p class="sub">Five control tables + a run log drive the whole framework. Onboarding a table = insert rows, no code.</p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 720 300" role="img" aria-label="Metadata entity relationships">
+      <defs><marker id="am" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#9fb0cc"/></marker></defs>
+      <rect x="30" y="30" width="180" height="58" rx="9" fill="var(--panel)" stroke="var(--accent3)"/>
+      <text x="120" y="53" text-anchor="middle" class="n">source_master</text>
+      <text x="120" y="72" text-anchor="middle" class="s">source_id (PK) · landing_root</text>
+
+      <rect x="30" y="120" width="180" height="52" rx="9" fill="var(--panel)" stroke="var(--line)"/>
+      <text x="120" y="141" text-anchor="middle" class="n">source_config</text>
+      <text x="120" y="159" text-anchor="middle" class="s">source_id · key · value</text>
+
+      <rect x="290" y="30" width="200" height="58" rx="9" fill="var(--panel)" stroke="var(--accent)"/>
+      <text x="390" y="49" text-anchor="middle" class="n">dataset_master</text>
+      <text x="390" y="66" text-anchor="middle" class="s">dataset_id (PK) · source_id</text>
+      <text x="390" y="80" text-anchor="middle" class="s">table_group_no · target_table</text>
+
+      <rect x="290" y="120" width="200" height="52" rx="9" fill="var(--panel)" stroke="var(--accent)"/>
+      <text x="390" y="141" text-anchor="middle" class="n">dataset_config ⭐</text>
+      <text x="390" y="159" text-anchor="middle" class="s">dataset_id · key · value</text>
+
+      <rect x="290" y="210" width="200" height="52" rx="9" fill="var(--panel)" stroke="var(--accent2)"/>
+      <text x="390" y="231" text-anchor="middle" class="n">platform_config</text>
+      <text x="390" y="249" text-anchor="middle" class="s">key · value (global)</text>
+
+      <rect x="560" y="120" width="130" height="52" rx="9" fill="var(--panel)" stroke="var(--red)"/>
+      <text x="625" y="141" text-anchor="middle" class="n">pipeline_log</text>
+      <text x="625" y="159" text-anchor="middle" class="s">run/phase log</text>
+
+      <line x1="120" y1="88" x2="120" y2="118" stroke="#9fb0cc" marker-end="url(#am)"/>
+      <line x1="390" y1="88" x2="390" y2="118" stroke="#9fb0cc" marker-end="url(#am)"/>
+      <line x1="210" y1="59" x2="288" y2="59" stroke="#9fb0cc" marker-end="url(#am)"/>
+    </svg>
+  </div>
+
+  <h2>Design principle: masters hold dimensions, config holds key/value</h2>
+  <p>Fixed, queried-on columns (ids, <code>table_group_no</code>, <code>enabled</code>) live on the <b>master</b> tables so the loader can filter cheaply. Everything else — the "how to load" knobs — lives as flexible <span class="kv">key/value</span> rows so new settings never need a schema change.</p>
+
+  <h3>1 · source_master</h3>
+  <table><tr><th>column</th><th>meaning</th></tr>
+    <tr><td><code>source_id</code></td><td>PK — logical source (e.g. <code>ORA_SALES</code>)</td></tr>
+    <tr><td><code>source_type</code> / <code>replication_tool</code></td><td>oracle / qlik_replicate</td></tr>
+    <tr><td><code>landing_root</code></td><td>ADLS root the paths are derived from</td></tr>
+    <tr><td><code>enabled</code></td><td>toggle the whole source</td></tr></table>
+
+  <h3>2 · source_config <span class="kv">(key/value)</span></h3>
+  <p>Per-source overflow: <code>file_format=parquet</code>, <code>full_suffix=__full</code>, <code>ct_suffix=__ct</code>.</p>
+
+  <h3>3 · dataset_master</h3>
+  <table><tr><th>column</th><th>meaning</th></tr>
+    <tr><td><code>dataset_id</code></td><td>PK — <code>ORA_SALES.ORDERS</code></td></tr>
+    <tr><td><code>source_id</code></td><td>FK → source_master</td></tr>
+    <tr><td><code>source_schema</code> / <code>source_table</code></td><td>where it comes from</td></tr>
+    <tr><td><code>target_table</code></td><td>UC table name</td></tr>
+    <tr><td><b><code>table_group_no</code></b></td><td>which of the 20 pipelines owns it — the <b>filter dimension</b></td></tr>
+    <tr><td><code>enabled</code></td><td>toggle this table</td></tr></table>
+
+  <h3>4 · dataset_config <span class="kv">(key/value)</span> ⭐ the heart</h3>
+  <table><tr><th>config_key</th><th>example</th><th>used by</th></tr>
+    <tr><td><code>primary_keys</code></td><td><code>order_id</code></td><td>apply_changes keys</td></tr>
+    <tr><td><code>sequence_by</code></td><td><code>header__change_seq</code></td><td>CDC ordering</td></tr>
+    <tr><td><code>scd_type</code></td><td><code>1</code> / <code>2</code> / <code>both</code></td><td>which targets to write</td></tr>
+    <tr><td><code>load_type</code></td><td><code>full</code> / <code>incr</code></td><td>include seed flow?</td></tr>
+    <tr><td><code>cluster_by</code></td><td><code></code> (blank = AUTO)</td><td>liquid clustering</td></tr></table>
+
+  <h3>5 · platform_config <span class="kv">(key/value)</span></h3>
+  <p>Global knobs: <code>target_catalog</code>, <code>scd1_schema</code>, <code>scd2_schema</code>, <code>checkpoint_root</code>, <code>schema_root</code>, <code>qlik_op_col</code>, <code>qlik_delete_code</code>, <code>liquid_cluster_auto</code>.</p>
+
+  <h2>How meta_loader reads them</h2>
+  <pre>load_dataset_metadata(spark, source="ORA_SALES", table_group_no=1, dataset_list="ALL")
+  → { "ORA_SALES.ORDERS": { dataset_id, source_table, target_table, table_group_no,
+                            primary_keys, sequence_by, scd_type, load_type, cluster_by },
+      "ORA_SALES.CUSTOMERS": { ... } }
+# master columns overlaid with all of that dataset's config key/values, one flat dict.</pre>
+
+  <h2>Onboarding a new table = 2 inserts</h2>
+  <pre>INSERT INTO dataset_master VALUES ('ORA_SALES.RETURNS','ORA_SALES','SALES','RETURNS','returns',3,true);
+INSERT INTO dataset_config VALUES
+  ('ORA_SALES.RETURNS','primary_keys','return_id'),
+  ('ORA_SALES.RETURNS','scd_type','both'),
+  ('ORA_SALES.RETURNS','load_type','full');
+-- next run of pipeline group 3 picks it up. No code change.</pre>
+
+  <p>Back to <a href="index.html">design index</a> · or the <a href="high-level-flow.html">high-level flow</a>.</p>
+</div>
+</body>
+</html>

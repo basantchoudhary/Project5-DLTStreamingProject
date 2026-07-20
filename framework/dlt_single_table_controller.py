@@ -64,7 +64,10 @@ def build_single_table(spark, dataset, source, platform, *, run_id, source_id, t
     @dlt.view(name=processed_view)
     def _processed():
         raw = dlt.read_stream(raw_table)
-        return standardize_cdc(raw, derived["op_col"], derived["seq_col"], derived["delete_code"])
+        return standardize_cdc(
+            raw, derived["op_col"], derived["seq_col"], derived["delete_code"],
+            delete_mode=derived["delete_mode"], is_deleted_col=derived["is_deleted_col"],
+        )
 
     # -- 5. writer: apply_changes into SCD1/SCD2 -------------------------------
     write_scd_targets(derived, processed_view)

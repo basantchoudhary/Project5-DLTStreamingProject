@@ -58,6 +58,11 @@ def build_derived_config(dataset, source, platform):
     seq_col = _get(dataset, "sequence_by", _get(platform, "qlik_seq_col", "header__change_seq"))
     delete_code = _get(dataset, "delete_code", _get(platform, "qlik_delete_code", "D"))
 
+    # --- delete handling: 'hard' (physical) or 'soft' (is_deleted flag) ---------
+    delete_mode = str(_get(dataset, "delete_mode",
+                           _get(platform, "delete_mode", "hard"))).lower()
+    is_deleted_col = _get(platform, "is_deleted_col", "is_deleted")
+
     # --- SCD targets ------------------------------------------------------------
     scd_type = str(_get(dataset, "scd_type", "1")).lower()
     target_catalog = _get(platform, "target_catalog", "bronze")
@@ -95,6 +100,8 @@ def build_derived_config(dataset, source, platform):
         "op_col": op_col,
         "seq_col": seq_col,
         "delete_code": delete_code,
+        "delete_mode": delete_mode,          # 'hard' | 'soft'
+        "is_deleted_col": is_deleted_col,
         # targets
         "scd_targets": scd_targets,
         "primary_keys": primary_keys,
