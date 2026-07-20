@@ -29,9 +29,9 @@ INSERT INTO ingest_meta.control.source_master
 
 DELETE FROM ingest_meta.control.source_config WHERE source_id = 'ORA_SALES';
 INSERT INTO ingest_meta.control.source_config (source_id, config_key, config_value) VALUES
-  ('ORA_SALES', 'file_format', 'parquet'),
-  ('ORA_SALES', 'cdc_subpath', 'cdc'),
-  ('ORA_SALES', 'full_subpath', 'full');
+  ('ORA_SALES', 'file_format',  'parquet'),
+  ('ORA_SALES', 'full_suffix',  '__full'),   -- landing layout: <table>__full
+  ('ORA_SALES', 'ct_suffix',    '__ct');     -- landing layout: <table>__ct
 
 -- ---- dataset_master --------------------------------------------------------
 DELETE FROM ingest_meta.control.dataset_master WHERE source_id = 'ORA_SALES';
@@ -43,20 +43,18 @@ INSERT INTO ingest_meta.control.dataset_master
 -- ---- dataset_config (HOW to load each) -------------------------------------
 DELETE FROM ingest_meta.control.dataset_config
   WHERE dataset_id IN ('ORA_SALES.ORDERS', 'ORA_SALES.CUSTOMERS');
+-- paths are DERIVED by build_derived_config (landing_root + <table>__full/__ct),
+-- so only the "how to load" knobs live here.
 INSERT INTO ingest_meta.control.dataset_config (dataset_id, config_key, config_value) VALUES
-  -- ORDERS
+  -- ORDERS: SCD1+SCD2, ongoing CDC only
   ('ORA_SALES.ORDERS', 'primary_keys', 'order_id'),
   ('ORA_SALES.ORDERS', 'sequence_by',  'header__change_seq'),
   ('ORA_SALES.ORDERS', 'scd_type',     'both'),
   ('ORA_SALES.ORDERS', 'load_type',    'incr'),
-  ('ORA_SALES.ORDERS', 'full_path',    'abfss://land@acct.dfs.core.windows.net/ora_sales/ORDERS/full'),
-  ('ORA_SALES.ORDERS', 'incr_path',    'abfss://land@acct.dfs.core.windows.net/ora_sales/ORDERS/cdc'),
   ('ORA_SALES.ORDERS', 'cluster_by',   ''),
-  -- CUSTOMERS
+  -- CUSTOMERS: SCD2, seed with full then ongoing CDC
   ('ORA_SALES.CUSTOMERS', 'primary_keys', 'customer_id'),
   ('ORA_SALES.CUSTOMERS', 'sequence_by',  'header__change_seq'),
   ('ORA_SALES.CUSTOMERS', 'scd_type',     '2'),
   ('ORA_SALES.CUSTOMERS', 'load_type',    'full'),
-  ('ORA_SALES.CUSTOMERS', 'full_path',    'abfss://land@acct.dfs.core.windows.net/ora_sales/CUSTOMERS/full'),
-  ('ORA_SALES.CUSTOMERS', 'incr_path',    'abfss://land@acct.dfs.core.windows.net/ora_sales/CUSTOMERS/cdc'),
   ('ORA_SALES.CUSTOMERS', 'cluster_by',   'customer_id');

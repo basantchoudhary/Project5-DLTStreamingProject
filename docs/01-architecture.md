@@ -10,13 +10,13 @@ config row, not code.
 ## 1 · End-to-end flow
 
 ```
-   ┌────────┐  CDC   ┌──────────────┐  Parquet  ┌───────────────────────────────┐
-   │ ORACLE │───────►│ Qlik         │──────────►│ ADLS Gen2 (landing)           │
-   │ (OLTP) │        │ Replicate    │           │  <source>/<table>/full/  ▪▪▪  │
-   └────────┘        └──────────────┘           │  <source>/<table>/cdc/   ▪▪▪  │
-                                                └───────────────┬───────────────┘
+   ┌────────┐ redo  ┌──────────────────────────┐ snappy  ┌──────────────────────────────┐
+   │ ORACLE │ logs  │ Qlik Replicate (Azure VM)│ parquet │ ADLS Gen2 (landing)          │
+   │ (OLTP) │──────►│ copy redolog → extract → │────────►│  <source>/<table>__full  ▪▪▪ │
+   └────────┘       │ zip parquet (snappy)     │         │  <source>/<table>__ct    ▪▪▪ │
+     ▲ SomeApp      └──────────────────────────┘         └───────────────┬──────────────┘
                                                                 │ Auto Loader (cloudFiles)
-                                                                │ full path OR incr path
+                                                                │ __full seed flow + __ct flow
                         ┌───────────────────────────────────────▼───────────────────────┐
                         │  DLT PIPELINE  (one per table_group_no; ~20 tables each)        │
                         │                                                                 │
@@ -39,7 +39,7 @@ config row, not code.
    METADATA-DRIVEN   onboard a table = insert a config row (no new code).
    DLT apply_changes  CDC/SCD handled natively (Type 1 & Type 2) — no hand-rolled MERGE.
    Auto Loader        exactly-once file ingestion, schema evolution, checkpointed.
-   table_group_no     200 tables / 10 pipelines → ~20 tables each = parallelism +
+   table_group_no     200 tables / 20 pipelines → ~10 tables each = parallelism +
                       blast-radius isolation (one group's failure ≠ all 200).
    streaming tables   continuous/triggered incremental; liquid clustering AUTO = no
                       manual partition/Z-order tuning.
@@ -101,14 +101,15 @@ config row, not code.
 ## 6 · Pipeline fan-out (table_group_no)
 
 ```
-   200 tables ──assign table_group_no 1..10 in dataset_config──►
+   200 tables ──assign table_group_no 1..20 in dataset_master──►
 
-     Pipeline g=1  ─ processes ~20 tables (group 1)   ┐
-     Pipeline g=2  ─ processes ~20 tables (group 2)   │  10 pipelines run independently
+     Pipeline g=1  ─ processes ~10 tables (group 1)   ┐
+     Pipeline g=2  ─ processes ~10 tables (group 2)   │  20 pipelines run independently
      ...                                              │  (isolation + parallelism)
-     Pipeline g=10 ─ processes ~20 tables (group 10)  ┘
+     Pipeline g=20 ─ processes ~10 tables (group 20)  ┘
 
-   Same entry notebook; each pipeline just gets a different `pipeline.table_group_no`.
+   Same entry notebook (pipelines/dlt_entry.py); each pipeline just gets a different
+   `pipeline.source` / `pipeline.table_group_no` / `pipeline.dataset_list`.
 ```
 
 *Next: [`02-metadata-model.md`](02-metadata-model.md).*
