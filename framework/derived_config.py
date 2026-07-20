@@ -75,6 +75,12 @@ def build_derived_config(dataset, source, platform):
     if scd_type in ("2", "both"):
         scd_targets.append((2, f"{target_catalog}.{scd2_schema}.{target_table}"))
 
+    # --- merge mode: 'cdc' (apply_changes) or 'append' (keep every row, no dedup) -
+    # 'append' is for keyless tables / genuine duplicates the business wants kept.
+    merge_mode = str(_get(dataset, "merge_mode", "cdc")).lower()
+    append_schema = _get(platform, "append_schema", "bronze_append")
+    append_target = f"{target_catalog}.{append_schema}.{target_table}"
+
     # --- keys / clustering / load lifecycle ------------------------------------
     primary_keys = [k.strip() for k in _get(dataset, "primary_keys", "").split(",") if k.strip()]
     cluster_by_raw = _get(dataset, "cluster_by", "")
@@ -104,6 +110,8 @@ def build_derived_config(dataset, source, platform):
         "is_deleted_col": is_deleted_col,
         # targets
         "scd_targets": scd_targets,
+        "merge_mode": merge_mode,            # 'cdc' | 'append'
+        "append_target": append_target,
         "primary_keys": primary_keys,
         "cluster_by": cluster_by,
         "cluster_auto": cluster_auto,

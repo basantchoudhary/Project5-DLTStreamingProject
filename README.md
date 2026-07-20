@@ -33,6 +33,7 @@ Diagram-first design pages (open in a browser): **[design/](design/index.html)**
 | [`framework/`](framework/) | The engine — see the component table below. |
 | [`pipelines/dlt_entry.py`](pipelines/dlt_entry.py) | The single notebook all 20 pipelines point at. |
 | [`deploy/create_dlt_pipelines.py`](deploy/create_dlt_pipelines.py) | Provision the 20 pipelines (Databricks SDK, metadata-driven). |
+| [`testing/`](testing/) | Mock-data → run → assert harness (count + SCD2 invariant rules). |
 | [`design/`](design/index.html) | HTML design pages (flow / LLD / metadata). |
 | [`docs/`](docs/) | Architecture, metadata model, Silver/Gold, real-time to Power BI. |
 | [`ComponentWiseConceptToLearn/`](ComponentWiseConceptToLearn/) | 19 concept explainers (redo log → testing). |
@@ -82,6 +83,8 @@ of that pipeline group picks it up. No code change.
 
 - **Log-based CDC → SCD1/SCD2** via `apply_changes` (no hand-rolled MERGE).
 - **full + ct via `append_flow`** into one `_raw` table; `load_type` toggles the seed.
+- **`merge_mode = cdc | append`** — `append` keeps every row (keyless tables /
+  genuine duplicates the business wants), bypassing `apply_changes`.
 - **Idempotent** by primary key + sequence; safe re-runs, safe full/incr overlap.
 - **Hard or soft delete** (`delete_mode` — soft flags `is_deleted` instead of removing).
 - **Liquid clustering AUTO** (not aggressive auto-compaction — see the challenge).

@@ -13,6 +13,7 @@ INSERT INTO ingest_meta.control.platform_config (config_key, config_value) VALUE
   ('target_catalog',      'bronze'),
   ('scd1_schema',         'bronze_scd1'),
   ('scd2_schema',         'bronze_scd2'),
+  ('append_schema',       'bronze_append'),   -- target schema for merge_mode='append' tables
   ('checkpoint_root',     'abfss://ingest@acct.dfs.core.windows.net/_checkpoints'),
   ('schema_root',         'abfss://ingest@acct.dfs.core.windows.net/_schemas'),
   ('qlik_op_col',         'header__change_oper'),
