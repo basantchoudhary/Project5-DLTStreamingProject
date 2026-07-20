@@ -23,6 +23,27 @@ of small-file churn, continuous compute.
 **uptime**: triggered + serverless beats always-on continuous for anything looser
 than sub-minute latency. Match the trigger to the SLA, not to "as fast as possible".
 
+## How we watch cost — cost observability dashboard
+
+You can't tune what you can't see. We ran a **cost observability dashboard** to
+attribute spend and catch regressions:
+
+- Built on the **system tables** — `system.billing.usage` (DBU consumption) joined
+  to `system.billing.list_prices`, sliced by pipeline / job / cluster / tag.
+- **Tag** each pipeline (source, table_group_no) so cost is attributable **per
+  group**, not just a lump sum — you can see which of the 20 pipelines is
+  expensive.
+- Watch **trend and outliers**: a pipeline whose DBUs jump overnight = a
+  regression (a [redo flood](redo-log-flood-from-maintenance.md), a
+  [full-scan MERGE](liquid-clustering-not-working.md), an
+  [autoscale that won't come down](autoscale-not-scaling-down.md)).
+- Pair with the **DLT event log** and Spark UI for the *why* once the dashboard
+  shows the *where*.
+
+The dashboard turns cost from a monthly surprise into a signal you act on.
+
 **Related:** [Small files](small-files-from-cdc.md),
 [End-to-end latency](end-to-end-latency.md),
-[Blast radius / groups](blast-radius-and-groups.md).
+[Blast radius / groups](blast-radius-and-groups.md),
+[Autoscale won't scale down](autoscale-not-scaling-down.md),
+[Heavy joins](streaming-join-performance-cost.md).

@@ -22,6 +22,8 @@ flavour, not a deep dive — enough to recognise the symptom and know the lever.
 | 14 | [Qlik one-by-one vs batch apply](qlik-one-by-one-vs-batch-apply.md) | No-PK tables forced row-by-row apply; split into a separate task. |
 | 15 | [Liquid clustering AUTO not working → MERGE full scan](liquid-clustering-not-working.md) | AUTO didn't cluster the merge key; caught via `DESCRIBE HISTORY`. |
 | 16 | [Streaming join miss → drop](streaming-join-miss-reprocess.md) | Lookup missed a not-yet-arrived reference; quarantine + reprocess. |
+| 17 | [Heavy joins — cost & performance](streaming-join-performance-cost.md) | Many-to-many, broadcast not used, full scans; read the query plan. |
+| 18 | [Autoscale won't scale down](autoscale-not-scaling-down.md) | Scaled up under load, never shrank; state/shuffle pinned executors. |
 
 > These mirror the style of the ecom project's `Project Challenges/` — problem
 > first, root cause second, the proportionate fix third.
