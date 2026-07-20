@@ -20,6 +20,7 @@ flavour, not a deep dive — enough to recognise the symptom and know the lever.
 | 12 | [Auto-optimize overhead → liquid clustering AUTO](auto-optimize-overhead.md) | Auto-compaction over-fired on streaming; moved to clustering AUTO. |
 | 13 | [Missing log sequence (deleted redo logs)](missing-log-sequence.md) | Oracle purged archived logs before Qlik read them; retention → 48h. |
 | 14 | [Qlik one-by-one vs batch apply](qlik-one-by-one-vs-batch-apply.md) | No-PK tables forced row-by-row apply; split into a separate task. |
+| 15 | [Liquid clustering AUTO not working → MERGE full scan](liquid-clustering-not-working.md) | AUTO didn't cluster the merge key; caught via `DESCRIBE HISTORY`. |
 
 > These mirror the style of the ecom project's `Project Challenges/` — problem
 > first, root cause second, the proportionate fix third.
